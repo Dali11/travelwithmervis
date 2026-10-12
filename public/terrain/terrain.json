@@ -1,0 +1,12 @@
+{
+  "west": 32.6,
+  "east": 36.2,
+  "south": -17.4,
+  "north": -9,
+  "cols": 216,
+  "rows": 504,
+  "zoom": 9,
+  "min": 30,
+  "max": 2869,
+  "source": "AWS Terrain Tiles (Mapzen), SRTM and others"
+}

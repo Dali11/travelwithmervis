@@ -1,0 +1,100 @@
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+let mapInstance: mapboxgl.Map | null = null;
+
+export function startMalawiMap(): void {
+  const container = document.getElementById('mapbox-map');
+  if (!container || mapInstance) return;
+
+  const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
+
+  if (!token) {
+    container.innerHTML = `
+      <div class="mapbox-token-message">
+        <span>MAPBOX 3D TERRAIN</span>
+        <h3>Malawi, in three dimensions.</h3>
+        <p>Add your Mapbox access token to the local environment to activate the interactive terrain.</p>
+      </div>`;
+    return;
+  }
+
+  mapboxgl.accessToken = token;
+
+  mapInstance = new mapboxgl.Map({
+    container,
+    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+    center: [34.3, -13.25],
+    zoom: 6.2,
+    pitch: 68,
+    bearing: -8,
+    antialias: true,
+    projection: 'mercator',
+    attributionControl: true
+  });
+
+  mapInstance.addControl(
+    new mapboxgl.NavigationControl({ visualizePitch: true }),
+    'top-right'
+  );
+
+  mapInstance.addControl(
+    new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' }),
+    'bottom-left'
+  );
+
+  mapInstance.on('style.load', () => {
+    if (!mapInstance) return;
+
+    if (!mapInstance.getSource('malawi-dem')) {
+      mapInstance.addSource('malawi-dem', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        tileSize: 512,
+        maxzoom: 14
+      });
+    }
+
+    mapInstance.setTerrain({
+      source: 'malawi-dem',
+      exaggeration: 2.0
+    });
+
+    if (!mapInstance.getLayer('malawi-hillshade')) {
+      mapInstance.addLayer({
+        id: 'malawi-hillshade',
+        source: 'malawi-dem',
+        type: 'hillshade',
+        paint: {
+          'hillshade-exaggeration': 0.35,
+          'hillshade-shadow-color': '#243d32',
+          'hillshade-highlight-color': '#f3e9c7',
+          'hillshade-accent-color': '#6e8064'
+        }
+      });
+    }
+
+    mapInstance.setFog({
+      color: 'rgb(222, 231, 218)',
+      'high-color': 'rgb(155, 190, 205)',
+      'horizon-blend': 0.12,
+      'space-color': 'rgb(20, 43, 36)',
+      'star-intensity': 0.05
+    });
+  });
+
+  mapInstance.on('error', (event) => {
+    console.error('Mapbox map error:', event.error);
+  });
+
+  // Ensure Mapbox measures its container after the page layout settles.
+  requestAnimationFrame(() => mapInstance?.resize());
+  window.addEventListener('resize', () => mapInstance?.resize(), { passive: true });
+
+  // Resize after navigation or layout changes.
+  document.querySelectorAll<HTMLAnchorElement>('.site-nav a[href="#map"]').forEach((link) => {
+    link.addEventListener('click', () => {
+      window.setTimeout(() => mapInstance?.resize(), 350);
+    });
+  });
+}
